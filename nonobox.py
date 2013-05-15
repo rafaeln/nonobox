@@ -3,7 +3,7 @@
 # python version of stool (originally written for bash and sed)
 
 """ 
-Nonobox 0.3: companion tool for searches in SIL Toolbox-formatted databases
+Nonobox 0.3.1: companion tool for searches in SIL Toolbox-formatted databases
 Copyright (C) 2013 Rafael Bezerra Nonato [rafaeln@gmail.com]
 
 This program is free software: you can redistribute it and/or modify
@@ -30,40 +30,53 @@ from tkFileDialog import askopenfilename
 
 standard_directory = "~/Dropbox/linguistica/kisedje/ks-toolbox"
 
-def nl_dos_linux(lines): 
+def nl_dos_linux(line): 
 	""" for converting \r\n into \n """
 	dos_line_find = re.compile(r'\r', re.UNICODE)
-	output = []
-	for line in lines:
-		output.append(dos_line_find.sub('', line))
-	return output
+	out_line = dos_line_find.sub('', line)
+	return out_line
 
-def align_toolbox(field): 
-	""" for aligning glossed toolbox entries """
-	one_space_chars = u'[ãâáôóõêéũĩíç]' # if a word has one of those letters, one space will be added after it 
-	one_space_find = re.compile(one_space_chars, re.UNICODE|re.IGNORECASE)
-	two_space_chars = u'[ẽỹ]' # if a word has one of those letters, two spaces will be added after it
-	two_space_find = re.compile(two_space_chars, re.UNICODE|re.IGNORECASE)
-	space_chars = r' ' # spaces 
-	space_find = re.compile(space_chars, re.UNICODE)
+def align_toolbox(lines): 
+	""" for aligning toolbox databases """
+	tx_find = re.compile(r'\\tx', re.UNICODE)
+	mb_find = re.compile(r'\\mb', re.UNICODE)
+	desaligned_find = re.compile(r'\\(mb|gn|ps)', re.UNICODE)
+	dos_line_find = re.compile(r'\r', re.UNICODE)
 
+	out_lines = [] # initializes the lines to be returned
+	for line_number in range(len(lines)):
+		lines[line_number] = nl_dos_linux(lines[line_number])
+		if tx_find.search(lines[line_number]) and mb_find.search(lines[line_number+1]):
+			out_lines.append(align_line(lines[line_number]))
+		elif desaligned_find.search(lines[line_number]):
+			out_lines.append(align_line(lines[line_number]))
+		else:
+			out_lines.append(lines[line_number])
+
+	return out_lines
+
+def align_line(line):
+	""" for aligning a single line that has been identified as desaligned """
+	one_space_find = re.compile(u'[ãâáôóõêéũĩíç]', re.UNICODE|re.IGNORECASE)
+	two_space_find = re.compile(u'[ẽỹ]', re.UNICODE|re.IGNORECASE)
+	space_find = re.compile(r' ', re.UNICODE)
 	word_separation_pattern = re.compile(ur'(\S+)', re.UNICODE)
-	chunked_field = word_separation_pattern.split(field)
-	
-	out_field = '' # initializes the field to be returned
-	for i in range(len(chunked_field)-1):
-		if space_find.match(chunked_field[i+1]):
-			extra_spaces = len(one_space_find.findall(chunked_field[i])) + len(two_space_find.findall(chunked_field[i])) * 2
-			chunked_field[i+1] += ' ' * extra_spaces
-		out_field += chunked_field[i] 
+	chunked_line = word_separation_pattern.split(line)
 
-	return out_field
+	out_line = ''
+	for i in range(len(chunked_line)-1):
+		if space_find.match(chunked_line[i+1]):
+			extra_spaces = len(one_space_find.findall(chunked_line[i])) + len(two_space_find.findall(chunked_line[i])) * 2
+			chunked_line[i+1] += ' ' * extra_spaces
+		out_line += chunked_line[i] 
+
+	return out_line + '\n'
 
 def open_database(filename):
 	""" opens the database and returns a list of (linux) lines (I'm not closing the file. 
 	 Though I don't know if I actually need to) """
 	with codecs.open(filename, encoding = 'utf-8') as openfile:
-		lines = openfile.readlines()
+		lines = align_toolbox(openfile.readlines())
 	return lines
 
 def search_database(lines, register_separator, pattern): 
@@ -71,7 +84,6 @@ def search_database(lines, register_separator, pattern):
 	# creates the search objects
 	register_find = re.compile(register_separator, re.UNICODE)
 	pattern_find = re.compile(pattern, re.UNICODE)
-	glossed_find = re.compile(r'\\mb')
 
 	output = '' # initializes the output
 	line_number = 0 
@@ -83,10 +95,7 @@ def search_database(lines, register_separator, pattern):
 				field += lines[line_number]
 				line_number += 1
 			if pattern_find.search(field):
-				if glossed_find.search(field):
-					output += align_toolbox(field) + '\n\n'
-				else:
-					output += field
+				output += field
 		else:
 			line_number += 1
 
@@ -98,21 +107,17 @@ def search_aligned(lines, register_separator, pattern1, pattern2):
 	register_find = re.compile(register_separator, re.UNICODE)
 	pattern1_find = re.compile(pattern1, re.UNICODE)
 	pattern2_find = re.compile(pattern2, re.UNICODE)
-	glossed_find = re.compile(r'\\mb', re.UNICODE)
-	nl_find = re.compile(r'(\n)', re.UNICODE)
 
 	output = '' # initializes the output
 	line_number = 0 
 	while line_number < len(lines): # goes through all the lines 
 		if register_find.search(lines[line_number]): # found for the beginning of a field
-			field = lines[line_number] # initializes the field
+			field = [] # initializes the field
+			field.append(lines[line_number]) 
 			line_number += 1
 			while line_number < len(lines) and not register_find.search(lines[line_number]):
-				field += lines[line_number]
+				field.append(lines[line_number])
 				line_number += 1
-			if glossed_find.search(field):
-				field = align_toolbox(field) + '\n\n'
-			field = nl_find.split(field)
 			field_line = 0
 			while field_line < len(field):
 				found_pattern1 = pattern1_find.search(field[field_line])
@@ -207,7 +212,7 @@ def find(*ignore):
 	pattern = edit1.get()
 	register_separator = get_field_marker()
 	if pattern:
-		lines = nl_dos_linux(open_database(filename))
+		lines = open_database(filename)
 		result = search_database(lines, register_separator, pattern)
 
 		text.delete(0.0, END)
@@ -237,7 +242,7 @@ def find_aligned(*ignore):
 	pattern1 = edit1.get()
 	pattern2 = edit2.get()
 	if pattern1 and pattern2:
-		lines = nl_dos_linux(open_database(filename))
+		lines = open_database(filename)
 		result = search_aligned(lines, register_separator, pattern1, pattern2)
 
 		text.delete(0.0, END)
@@ -251,17 +256,20 @@ def find_aligned(*ignore):
 		count = IntVar()
 		count2 = IntVar()
 		while True:
-			idx = text.search(pattern1, idx, nocase=True, stopindex=END, regexp=True, count=count)
+			idx = text.search(pattern1, idx, stopindex=END, regexp=True, count=count)
 			if idx:
-				idx2 = idx + ' + 1 char' 
-				idx2 = text.search(pattern2, idx2, nocase=True, stopindex=END, regexp=True, count=count2)
+				idx2 = idx + ' + 1 line linestart' 
+				idx2 = text.search(pattern2, idx2, stopindex=END, regexp=True, count=count2)
 				num_matches += 1
 			else: 
 				break
 			lastidx = '%s+%dc' % (idx, count.get())
 			lastidx2 = '%s+%dc' % (idx2, count2.get())
 			idx_column = idx.split('.')[1]
-			idx2_column = idx2.split('.')[1]
+			try: 
+				idx2_column = idx2.split('.')[1]
+			except:
+				idx2_column = None
 				
 			if idx2_column == idx_column:
 				text.tag_add('found', idx, lastidx)
