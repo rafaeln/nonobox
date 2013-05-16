@@ -3,7 +3,7 @@
 # python version of stool (originally written for bash and sed)
 
 """ 
-Nonobox 0.3.3: companion tool for searches in SIL Toolbox-formatted databases
+Nonobox 0.3.4: companion tool for searches in SIL Toolbox-formatted databases
 Copyright (C) 2013 Rafael Bezerra Nonato [rafaeln@gmail.com]
 
 This program is free software: you can redistribute it and/or modify
