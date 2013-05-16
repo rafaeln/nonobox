@@ -3,7 +3,7 @@
 # python version of stool (originally written for bash and sed)
 
 """ 
-Nonobox 0.3.2: companion tool for searches in SIL Toolbox-formatted databases
+Nonobox 0.3.3: companion tool for searches in SIL Toolbox-formatted databases
 Copyright (C) 2013 Rafael Bezerra Nonato [rafaeln@gmail.com]
 
 This program is free software: you can redistribute it and/or modify
@@ -36,7 +36,7 @@ def nl_dos_linux(line):
 	out_line = dos_line_find.sub('', line)
 	return out_line
 
-def align_toolbox(lines): 
+def fix_toolbox(lines): 
 	""" for aligning toolbox databases (defined over lists of strings) """
 	tx_find = re.compile(r'\\tx', re.UNICODE)
 	mb_find = re.compile(r'\\mb', re.UNICODE)
@@ -52,7 +52,6 @@ def align_toolbox(lines):
 			out_lines.append(align_line(lines[line_number]))
 		else:
 			out_lines.append(lines[line_number])
-
 	return out_lines
 
 def align_line(line):
@@ -69,14 +68,13 @@ def align_line(line):
 			extra_spaces = len(one_space_find.findall(chunked_line[i])) + len(two_space_find.findall(chunked_line[i])) * 2
 			chunked_line[i+1] += ' ' * extra_spaces
 		out_line += chunked_line[i] 
-
 	return out_line + '\n'
 
 def open_database(filename):
 	""" opens the database and returns a list of lines (I'm not closing the file. 
 	 Though I don't know if I actually need to) """
 	with codecs.open(filename, encoding = 'utf-8') as openfile:
-		lines = align_toolbox(openfile.readlines())
+		lines = fix_toolbox(openfile.readlines())
 	return lines
 
 def search_database(lines, register_separator, pattern): 
@@ -104,35 +102,34 @@ def search_database(lines, register_separator, pattern):
 def search_aligned(lines, register_separator, pattern1, pattern2): 
 	""" for searching and printing fields that match """
 	# creates the search objects
-	register_find = re.compile(register_separator, re.UNICODE)
-	pattern1_find = re.compile(pattern1, re.UNICODE)
-	pattern2_find = re.compile(pattern2, re.UNICODE)
+	register = re.compile(register_separator, re.UNICODE)
+	pattern1 = re.compile(pattern1, re.UNICODE)
+	pattern2 = re.compile(pattern2, re.UNICODE)
 
 	output = '' # initializes the output
 	line_number = 0 
 	while line_number < len(lines): # goes through all the lines 
-		if register_find.search(lines[line_number]): # found for the beginning of a field
+		if register.search(lines[line_number]): # found for the beginning of a field
 			field = [] # initializes the field
 			field.append(lines[line_number]) 
 			line_number += 1
-			while line_number < len(lines) and not register_find.search(lines[line_number]):
+			while line_number < len(lines) and not register.search(lines[line_number]): # builds the rest of field
 				field.append(lines[line_number])
 				line_number += 1
-			field_line = 0
-			while field_line < len(field):
-				found_pattern1 = pattern1_find.finditer(field[field_line])
-				if found_pattern1:
-					positions_pattern1 = { x.start() for x in found_pattern1 }
-					for embedded_field_line in range(field_line+1,len(field)):
-						found_pattern2 = pattern2_find.finditer(field[embedded_field_line])
-						if found_pattern2:
-							positions_pattern2 = { x.start() for x in found_pattern2 }
-							if positions_pattern1 & positions_pattern2:
-								break
-					if found_pattern1 and found_pattern2 and positions_pattern1 & positions_pattern2:
+			found_pattern1 = set()
+			for match_object_list in { pattern1.finditer(field_line) for field_line in field }:
+				for match_object in match_object_list:
+					found_pattern1.add(match_object)
+			found_pattern2 = set()
+			for match_object_list in { pattern2.finditer(field_line) for field_line in field }:
+				for match_object in match_object_list:
+					found_pattern2.add(match_object)
+			if found_pattern1:
+				positions_pattern1 = { x.start() for x in found_pattern1 }
+				if found_pattern2:
+					positions_pattern2 = { x.start() for x in found_pattern2 }
+					if positions_pattern1 & positions_pattern2:
 						output += ''.join(field)
-						break
-				field_line += 2
 		else:
 			line_number += 1
 
@@ -223,11 +220,11 @@ def find(*ignore):
 		text.tag_remove('found', '1.0', END)
 		idx = '1.0'
 		num_matches = 0
-		count = IntVar()
+		length_match = IntVar()
 		while True:
-			idx = text.search(pattern, idx, nocase=True, stopindex=END, regexp=True, count=count)
+			idx = text.search(pattern, idx, nocase=True, stopindex=END, regexp=True, count=length_match)
 			if not idx: break
-			lastidx = '%s+%dc' % (idx, count.get())
+			lastidx = '%s+%dc' % (idx, length_match.get())
 			text.tag_add('found', idx, lastidx)
 			idx = lastidx
 			num_matches += 1
@@ -249,32 +246,49 @@ def find_aligned(*ignore):
 		text.insert(END, result)
 		resize(result, text)
 
-		# this far I only got the matches and put them in the text box. Now I'll count the matches and highlight them.
+		# this far I only got the matches and put them in the text box. Now I'll find where they are
 		text.tag_remove('found', '1.0', END)
-		idx = '1.0'
-		num_matches = 0
-		count = IntVar()
-		count2 = IntVar()
+		index = [ '1.0', '1.0' ]
+		indexes = [ [ ], [ ] ]
+		length_match = [ IntVar(), IntVar() ]
+		length_matches = [ [ ], [ ] ]
 		while True:
-			idx = text.search(pattern1, idx, stopindex=END, regexp=True, count=count)
-			if idx:
-				idx2 = idx + ' + 1 line linestart' 
-				idx2 = text.search(pattern2, idx2, stopindex=END, regexp=True, count=count2)
-				num_matches += 1
+			index[0] = text.search(pattern1, index[0], stopindex=END, regexp=True, count=length_match[0])
+			if index[0]:
+				indexes[0].append(index[0])
+				length_matches[0].append(length_match[0].get())
+				if length_match[0].get():
+					index[0] = '%s + %d char' % (index[0], length_match[0].get())
+				else:
+					index[0] = '%s + 1 char' % (index[0])
 			else: 
 				break
-			lastidx = '%s+%dc' % (idx, count.get())
-			lastidx2 = '%s+%dc' % (idx2, count2.get())
-			idx_column = idx.split('.')[1]
-			try: 
-				idx2_column = idx2.split('.')[1]
-			except:
-				idx2_column = None
-				
-			if idx2_column == idx_column:
-				text.tag_add('found', idx, lastidx)
-				text.tag_add('found', idx2, lastidx2)
-			idx = lastidx
+		while True:
+			index[1] = text.search(pattern2, index[1], stopindex=END, regexp=True, count=length_match[1])
+			if index[1]:
+				indexes[1].append(index[1])
+				length_matches[1].append(length_match[1].get())
+				if length_match[1].get():
+					index[1] = '%s + %d char' % (index[1], length_match[1].get())
+				else:
+					index[1] = '%s + 1 char' % (index[1])
+			else:
+				break
+
+		# and here I will find which ones are aligned and mark them, and also count the matches
+		num_matches = 0
+		for idx in indexes[0]:
+			for num in range(1,3):
+				tentative_line = int(idx.split('.')[0]) + num
+				idx_column = idx.split('.')[1]
+				tentative_index = '%s.%s' % (tentative_line, idx_column)
+				if tentative_index in indexes[1]:
+					lastidx0 = '%s + %d chars' % (idx, length_matches[0][indexes[0].index(idx)])
+					lastidx1 = '%s + %d chars' % (tentative_index, length_matches[1][indexes[1].index(tentative_index)])
+					text.tag_add('found', idx, lastidx0)
+					text.tag_add('found', tentative_index, lastidx1)
+					num_matches += 1
+
 		text.tag_config('found', foreground='red')
 		root.title('Nonobox - ' + filename + ' (' + str(num_matches) + ' matches)')
 
