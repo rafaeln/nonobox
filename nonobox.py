@@ -3,7 +3,7 @@
 # python version of stool (originally written for bash and sed)
 
 """ 
-Nonobox 0.3.1: companion tool for searches in SIL Toolbox-formatted databases
+Nonobox 0.3.2: companion tool for searches in SIL Toolbox-formatted databases
 Copyright (C) 2013 Rafael Bezerra Nonato [rafaeln@gmail.com]
 
 This program is free software: you can redistribute it and/or modify
@@ -31,13 +31,13 @@ from tkFileDialog import askopenfilename
 standard_directory = "~/Dropbox/linguistica/kisedje/ks-toolbox"
 
 def nl_dos_linux(line): 
-	""" for converting \r\n into \n """
+	""" for converting a line that ends \r\n into a line that ends in \n """
 	dos_line_find = re.compile(r'\r', re.UNICODE)
 	out_line = dos_line_find.sub('', line)
 	return out_line
 
 def align_toolbox(lines): 
-	""" for aligning toolbox databases """
+	""" for aligning toolbox databases (defined over lists of strings) """
 	tx_find = re.compile(r'\\tx', re.UNICODE)
 	mb_find = re.compile(r'\\mb', re.UNICODE)
 	desaligned_find = re.compile(r'\\(mb|gn|ps)', re.UNICODE)
@@ -73,7 +73,7 @@ def align_line(line):
 	return out_line + '\n'
 
 def open_database(filename):
-	""" opens the database and returns a list of (linux) lines (I'm not closing the file. 
+	""" opens the database and returns a list of lines (I'm not closing the file. 
 	 Though I don't know if I actually need to) """
 	with codecs.open(filename, encoding = 'utf-8') as openfile:
 		lines = align_toolbox(openfile.readlines())
@@ -120,16 +120,16 @@ def search_aligned(lines, register_separator, pattern1, pattern2):
 				line_number += 1
 			field_line = 0
 			while field_line < len(field):
-				found_pattern1 = pattern1_find.search(field[field_line])
+				found_pattern1 = pattern1_find.finditer(field[field_line])
 				if found_pattern1:
-					position_pattern1 = found_pattern1.start()
+					positions_pattern1 = [ x.start() for x in found_pattern1 ]
 					for embedded_field_line in range(field_line+1,len(field)):
-						found_pattern2 = pattern2_find.search(field[embedded_field_line])
+						found_pattern2 = pattern2_find.finditer(field[embedded_field_line])
 						if found_pattern2:
-							position_pattern2 = found_pattern2.start()
-							if position_pattern1 == position_pattern2:
+							positions_pattern2 = [ x.start() for x in found_pattern2 ]
+							if set(positions_pattern1) & set(positions_pattern2):
 								break
-					if found_pattern1 and found_pattern2 and position_pattern1 == position_pattern2: 
+					if found_pattern1 and found_pattern2 and set(positions_pattern1) & set(positions_pattern2):
 						output += ''.join(field)
 						break
 				field_line += 2
