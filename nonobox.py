@@ -122,14 +122,14 @@ def search_aligned(lines, register_separator, pattern1, pattern2):
 			while field_line < len(field):
 				found_pattern1 = pattern1_find.finditer(field[field_line])
 				if found_pattern1:
-					positions_pattern1 = [ x.start() for x in found_pattern1 ]
+					positions_pattern1 = { x.start() for x in found_pattern1 }
 					for embedded_field_line in range(field_line+1,len(field)):
 						found_pattern2 = pattern2_find.finditer(field[embedded_field_line])
 						if found_pattern2:
-							positions_pattern2 = [ x.start() for x in found_pattern2 ]
-							if set(positions_pattern1) & set(positions_pattern2):
+							positions_pattern2 = { x.start() for x in found_pattern2 }
+							if positions_pattern1 & positions_pattern2:
 								break
-					if found_pattern1 and found_pattern2 and set(positions_pattern1) & set(positions_pattern2):
+					if found_pattern1 and found_pattern2 and positions_pattern1 & positions_pattern2:
 						output += ''.join(field)
 						break
 				field_line += 2
