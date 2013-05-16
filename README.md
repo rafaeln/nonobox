@@ -2,7 +2,7 @@ Nonobox
 =======
 
 Nonobox: companion tool for searches in SIL Toolbox-formatted databases
-Copyright (C) 2013 Rafael Bezerra Nonato [rafaeln@gmail.com]
+Copyright (C) 2013 Rafael Bezerra Nonato
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
