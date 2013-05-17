@@ -3,7 +3,7 @@
 # python version of stool (originally written for bash and sed)
 
 """ 
-Nonobox 0.3.4: companion tool for searches in SIL Toolbox-formatted databases
+Nonobox 0.4.0: companion tool for searches in SIL Toolbox-formatted databases
 Copyright (C) 2013 Rafael Bezerra Nonato [rafaeln@gmail.com]
 
 This program is free software: you can redistribute it and/or modify
@@ -99,6 +99,29 @@ def search_database(lines, register_separator, pattern):
 
 	return output
 
+def search_database12(lines, register_separator, pattern1, pattern2): 
+	""" for searching and printing fields that match pattern1 and pattern2 """
+	# creates the search objects
+	registerRegex = re.compile(register_separator, re.UNICODE)
+	patternRegex1 = re.compile(pattern1, re.UNICODE)
+	patternRegex2 = re.compile(pattern2, re.UNICODE)
+
+	output = '' # initializes the output
+	line_number = 0 
+	while line_number < len(lines): # goes through all the lines 
+		if registerRegex.search(lines[line_number]): # found for the beginning of a field
+			field = lines[line_number] # initializes the field
+			line_number += 1
+			while line_number < len(lines) and not registerRegex.search(lines[line_number]):
+				field += lines[line_number]
+				line_number += 1
+			if patternRegex1.search(field) and patternRegex2.search(field):
+				output += field
+		else:
+			line_number += 1
+
+	return output
+
 def search_aligned(lines, register_separator, pattern1, pattern2): 
 	""" for searching and printing fields that match """
 	# creates the search objects
@@ -140,36 +163,48 @@ root.title('Nonobox')
 icon = Image("photo", file="nonobox.gif")
 root.tk.call('wm', 'iconphoto', root._w, icon)
 
-# sets up the upper part, where the search field is
+# sets up the upper bar, with the fields
 topFrame = Frame(root)
 
 Label(topFrame, text='Field Marker:').pack(side=LEFT)
-edit3 = Entry(topFrame,)
-edit3.insert(END, r'\\ref')
-edit3.pack(side=LEFT, fill=BOTH)
+fieldMarker = Entry(topFrame,)
+fieldMarker.insert(END, r'\\ref')
+fieldMarker.pack(side=LEFT, fill=BOTH)
 
-Label(topFrame, text='Primary Regex:').pack(side=LEFT)
-edit1 = Entry(topFrame)
-edit1.pack(side=LEFT, fill=BOTH)
-edit1.focus_set()
+Label(topFrame, text='1st Regex:').pack(side=LEFT)
+regex1 = Entry(topFrame)
+regex1.pack(side=LEFT, fill=BOTH)
+regex1.focus_set()
+
+Label(topFrame, text='2nd Regex:').pack(side=LEFT)
+regex2 = Entry(topFrame)
+regex2.pack(side=LEFT, fill=BOTH)
 
 Label(topFrame, text='Aligned Regex:').pack(side=LEFT)
-edit2 = Entry(topFrame)
-edit2.pack(side=LEFT, fill=BOTH)
-
-button1 = Button(topFrame, text='Find Primary')
-button1.pack(side=LEFT)
-
-button2 = Button(topFrame, text='Find Primary + Aligned')
-button2.pack(side=LEFT)
-
-button3 = Button(topFrame, text='Open other file...')
-button3.pack(side=LEFT)
-
-button4 = Button(topFrame, text='Latexize')
-button4.pack(side=LEFT)
+alignedregex = Entry(topFrame)
+alignedregex.pack(side=LEFT, fill=BOTH)
 
 topFrame.pack(side=TOP, anchor=W, expand=YES, fill=BOTH) #, anchor=W, expand=YES, fill=BOTH)
+
+# sets the lower bar, with the buttons
+interFrame = Frame(root)
+
+buttonFind1 = Button(interFrame, text='Find 1st Regex')
+buttonFind1.pack(side=LEFT)
+
+buttonFind12 = Button(interFrame, text='Find 1st and 2nd Regexes')
+buttonFind12.pack(side=LEFT)
+
+buttonFindAligned = Button(interFrame, text='Find 1st Regex + Aligned Regex')
+buttonFindAligned.pack(side=LEFT)
+
+buttonOpen = Button(interFrame, text='Open other file...')
+buttonOpen.pack(side=LEFT)
+
+buttonLatex = Button(interFrame, text='Latexize')
+buttonLatex.pack(side=LEFT)
+
+interFrame.pack(side=TOP, anchor=W, expand=YES, fill=BOTH) #, anchor=W, expand=YES, fill=BOTH)
 
 #sets up the lower part, where the text is
 bottomFrame = Frame(root)
@@ -177,7 +212,7 @@ scroll = Scrollbar(bottomFrame)
 text = Text(bottomFrame)
 
 scroll.pack(side=RIGHT, fill=Y)
-text.config(width=180, height=50, tabs=30)
+text.config(width=90, height=50, tabs=30)
 text.pack(side=LEFT, expand=YES, fill=BOTH)
 bottomFrame.pack(side=BOTTOM, expand=YES, fill=BOTH)
 
@@ -192,7 +227,7 @@ class onscreen(object):
 
 def get_field_marker():
 	""" this gets the field marker, obvious, huh? """
-	register_separator = edit3.get()
+	register_separator = fieldMarker.get()
 	return register_separator
 
 def resize(result, text_widget):
@@ -201,12 +236,12 @@ def resize(result, text_widget):
 	line_separation_pattern = re.compile('\n', re.UNICODE)
 	lines_result = line_separation_pattern.split(result)
 	if result: 
-		width_widest_line = min(max_size, max([len(line_result) for line_result in lines_result]))
+		width_widest_line = min(max_size, max({len(line_result) for line_result in lines_result}))
 		text_widget.config(width = width_widest_line)
 
 def find(*ignore): 
 	""" for getting the entry and doing a search """
-	pattern = edit1.get()
+	pattern = regex1.get()
 	register_separator = get_field_marker()
 	if pattern:
 		lines = open_database(filename)
@@ -222,7 +257,7 @@ def find(*ignore):
 		num_matches = 0
 		length_match = IntVar()
 		while True:
-			idx = text.search(pattern, idx, nocase=True, stopindex=END, regexp=True, count=length_match)
+			idx = text.search(pattern, idx, stopindex=END, regexp=True, count=length_match)
 			if not idx: break
 			lastidx = '%s+%dc' % (idx, length_match.get())
 			text.tag_add('found', idx, lastidx)
@@ -231,13 +266,57 @@ def find(*ignore):
 		text.tag_config('found', foreground='red')
 		root.title('Nonobox - ' + filename + ' (' + str(num_matches) + ' matches)')
 
-		edit1.focus_set()
+		regex1.focus_set()
+
+def find12(*ignore): 
+	""" for getting the entry and doing a search """
+	pattern1 = regex1.get()
+	pattern2 = regex2.get()
+	register_separator = get_field_marker()
+	if pattern1 and pattern2:
+		lines = open_database(filename)
+		result = search_database12(lines, register_separator, pattern1, pattern2)
+
+		text.delete(0.0, END)
+		text.insert(END, result)
+		resize(result, text)
+
+		# this far I only got the matches and put them in the text box. Now I'll count the matches and highlight them 
+		text.tag_remove('found', '1.0', END)
+
+		num_matches = 0
+
+		# matching first pattern
+		idx = '1.0'
+		length_match = IntVar()
+		while True:
+			idx = text.search(pattern1, idx, stopindex=END, regexp=True, count=length_match)
+			if not idx: break
+			lastidx = '%s+%dc' % (idx, length_match.get())
+			text.tag_add('found', idx, lastidx)
+			idx = lastidx
+			num_matches += 1
+
+		# matching second pattern
+		idx = '1.0'
+		length_match = IntVar()
+		while True:
+			idx = text.search(pattern2, idx, stopindex=END, regexp=True, count=length_match)
+			if not idx: break
+			lastidx = '%s+%dc' % (idx, length_match.get())
+			text.tag_add('found', idx, lastidx)
+			idx = lastidx
+			num_matches += 1
+		text.tag_config('found', foreground='red')
+		root.title('Nonobox - ' + filename + ' (' + str(num_matches) + ' matches)')
+
+		regex1.focus_set()
 
 def find_aligned(*ignore): 
 	""" for getting the entry and doing a search """
 	register_separator = get_field_marker()
-	pattern1 = edit1.get()
-	pattern2 = edit2.get()
+	pattern1 = regex1.get()
+	pattern2 = alignedregex.get()
 	if pattern1 and pattern2:
 		lines = open_database(filename)
 		result = search_aligned(lines, register_separator, pattern1, pattern2)
@@ -292,7 +371,7 @@ def find_aligned(*ignore):
 		text.tag_config('found', foreground='red')
 		root.title('Nonobox - ' + filename + ' (' + str(num_matches) + ' matches)')
 
-		edit1.focus_set()
+		regex1.focus_set()
 
 def dialog_file():
 	""" opens the file selection dialogue """
@@ -320,7 +399,7 @@ def latexize():
 	text.delete(0.0, END)
 	text.insert(END, latex_text)
 	resize(latex_text, text)
-	button4.config(text = 'Delatexize', command=delatexize)
+	buttonLatex.config(text = 'Delatexize', command=delatexize)
 
 def delatexize():
 	""" brings the original text back, after having converted to latex """
@@ -331,16 +410,19 @@ def delatexize():
 	for tag_begin, tag_end in zip(tags_begin,tags_end):
 		text.tag_add('found',tag_begin,tag_end)
 	resize(onscreen.text, text)
-	button4.config(text = 'Latexize', command=latexize)
+	buttonLatex.config(text = 'Latexize', command=latexize)
 
-button1.config(command=find)
-edit1.bind('<Return>', find)
+buttonFind1.config(command=find)
+regex1.bind('<Return>', find)
 
-button2.config(command=find_aligned)
-edit2.bind('<Return>', find_aligned)
+buttonFind12.config(command=find12)
+regex2.bind('<Return>', find12)
 
-button3.config(command=dialog_file)
-button4.config(command=latexize)
+buttonFindAligned.config(command=find_aligned)
+alignedregex.bind('<Return>', find_aligned)
+
+buttonOpen.config(command=dialog_file)
+buttonLatex.config(command=latexize)
 
 dialog_file()
 
