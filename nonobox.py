@@ -3,7 +3,7 @@
 # python version of stool (originally written for bash and sed)
 
 """ 
-Nonobox 0.4.0: companion tool for searches in SIL Toolbox-formatted databases
+Nonobox 0.4.5: companion tool for searches in SIL Toolbox-formatted databases
 Copyright (C) 2013 Rafael Bezerra Nonato [rafaeln@gmail.com]
 
 This program is free software: you can redistribute it and/or modify
@@ -99,29 +99,6 @@ def search_database(lines, register_separator, pattern):
 
 	return output
 
-def search_database12(lines, register_separator, pattern1, pattern2): 
-	""" for searching and printing fields that match pattern1 and pattern2 """
-	# creates the search objects
-	registerRegex = re.compile(register_separator, re.UNICODE)
-	patternRegex1 = re.compile(pattern1, re.UNICODE)
-	patternRegex2 = re.compile(pattern2, re.UNICODE)
-
-	output = '' # initializes the output
-	line_number = 0 
-	while line_number < len(lines): # goes through all the lines 
-		if registerRegex.search(lines[line_number]): # found for the beginning of a field
-			field = lines[line_number] # initializes the field
-			line_number += 1
-			while line_number < len(lines) and not registerRegex.search(lines[line_number]):
-				field += lines[line_number]
-				line_number += 1
-			if patternRegex1.search(field) and patternRegex2.search(field):
-				output += field
-		else:
-			line_number += 1
-
-	return output
-
 def search_aligned(lines, register_separator, pattern1, pattern2): 
 	""" for searching and printing fields that match """
 	# creates the search objects
@@ -171,40 +148,39 @@ fieldMarker = Entry(topFrame,)
 fieldMarker.insert(END, r'\\ref')
 fieldMarker.pack(side=LEFT, fill=BOTH)
 
-Label(topFrame, text='1st Regex:').pack(side=LEFT)
+Label(topFrame, text='Regex:').pack(side=LEFT)
 regex1 = Entry(topFrame)
 regex1.pack(side=LEFT, fill=BOTH)
 regex1.focus_set()
-
-Label(topFrame, text='2nd Regex:').pack(side=LEFT)
-regex2 = Entry(topFrame)
-regex2.pack(side=LEFT, fill=BOTH)
 
 Label(topFrame, text='Aligned Regex:').pack(side=LEFT)
 alignedregex = Entry(topFrame)
 alignedregex.pack(side=LEFT, fill=BOTH)
 
-topFrame.pack(side=TOP, anchor=W, expand=YES, fill=BOTH) #, anchor=W, expand=YES, fill=BOTH)
+topFrame.pack(side=TOP, anchor=S, expand=YES, fill=BOTH) #, anchor=W, expand=YES, fill=BOTH)
 
 # sets the lower bar, with the buttons
 interFrame = Frame(root)
 
-buttonFind1 = Button(interFrame, text='Find 1st Regex')
+buttonFind1 = Button(interFrame, text='Find Regex')
 buttonFind1.pack(side=LEFT)
 
-buttonFind12 = Button(interFrame, text='Find 1st and 2nd Regexes')
-buttonFind12.pack(side=LEFT)
-
-buttonFindAligned = Button(interFrame, text='Find 1st Regex + Aligned Regex')
+buttonFindAligned = Button(interFrame, text='Find Regex + Aligned Regex')
 buttonFindAligned.pack(side=LEFT)
 
-buttonOpen = Button(interFrame, text='Open other file...')
-buttonOpen.pack(side=LEFT)
+checkInResults = IntVar()
+Checkbutton(interFrame, text = 'Search in results', variable = checkInResults).pack(side=LEFT, padx=5)
 
 buttonLatex = Button(interFrame, text='Latexize')
 buttonLatex.pack(side=LEFT)
 
-interFrame.pack(side=TOP, anchor=W, expand=YES, fill=BOTH) #, anchor=W, expand=YES, fill=BOTH)
+buttonHighlight = Button(interFrame, text='Highlight')
+buttonHighlight.pack(side=LEFT)
+
+buttonOpen = Button(interFrame, text='Open other file...')
+buttonOpen.pack(side=LEFT)
+
+interFrame.pack(side=TOP, anchor=S, expand=YES, fill=BOTH) #, anchor=W, expand=YES, fill=BOTH)
 
 #sets up the lower part, where the text is
 bottomFrame = Frame(root)
@@ -214,7 +190,7 @@ text = Text(bottomFrame)
 scroll.pack(side=RIGHT, fill=Y)
 text.config(width=90, height=50, tabs=30)
 text.pack(side=LEFT, expand=YES, fill=BOTH)
-bottomFrame.pack(side=BOTTOM, expand=YES, fill=BOTH)
+bottomFrame.pack(side=TOP, expand=YES, fill=BOTH)
 
 # sets up the scrolling things
 scroll.config(command=text.yview)
@@ -244,7 +220,10 @@ def find(*ignore):
 	pattern = regex1.get()
 	register_separator = get_field_marker()
 	if pattern:
-		lines = open_database(filename)
+		if not checkInResults.get():
+			lines = open_database(filename)
+		else:
+			lines = text.get(0.0, END).splitlines(True)
 		result = search_database(lines, register_separator, pattern)
 
 		text.delete(0.0, END)
@@ -268,57 +247,17 @@ def find(*ignore):
 
 		regex1.focus_set()
 
-def find12(*ignore): 
-	""" for getting the entry and doing a search """
-	pattern1 = regex1.get()
-	pattern2 = regex2.get()
-	register_separator = get_field_marker()
-	if pattern1 and pattern2:
-		lines = open_database(filename)
-		result = search_database12(lines, register_separator, pattern1, pattern2)
-
-		text.delete(0.0, END)
-		text.insert(END, result)
-		resize(result, text)
-
-		# this far I only got the matches and put them in the text box. Now I'll count the matches and highlight them 
-		text.tag_remove('found', '1.0', END)
-
-		num_matches = 0
-
-		# matching first pattern
-		idx = '1.0'
-		length_match = IntVar()
-		while True:
-			idx = text.search(pattern1, idx, stopindex=END, regexp=True, count=length_match)
-			if not idx: break
-			lastidx = '%s+%dc' % (idx, length_match.get())
-			text.tag_add('found', idx, lastidx)
-			idx = lastidx
-			num_matches += 1
-
-		# matching second pattern
-		idx = '1.0'
-		length_match = IntVar()
-		while True:
-			idx = text.search(pattern2, idx, stopindex=END, regexp=True, count=length_match)
-			if not idx: break
-			lastidx = '%s+%dc' % (idx, length_match.get())
-			text.tag_add('found', idx, lastidx)
-			idx = lastidx
-			num_matches += 1
-		text.tag_config('found', foreground='red')
-		root.title('Nonobox - ' + filename + ' (' + str(num_matches) + ' matches)')
-
-		regex1.focus_set()
-
 def find_aligned(*ignore): 
 	""" for getting the entry and doing a search """
 	register_separator = get_field_marker()
 	pattern1 = regex1.get()
 	pattern2 = alignedregex.get()
 	if pattern1 and pattern2:
-		lines = open_database(filename)
+		if not checkInResults.get():
+			lines = open_database(filename)
+		else:
+			lines = text.get(0.0, END).splitlines(True)
+
 		result = search_aligned(lines, register_separator, pattern1, pattern2)
 
 		text.delete(0.0, END)
@@ -412,17 +351,68 @@ def delatexize():
 	resize(onscreen.text, text)
 	buttonLatex.config(text = 'Latexize', command=latexize)
 
+def highlight():
+	pattern1 = regex1.get()
+	pattern2 = alignedregex.get()
+	if pattern1 and not pattern2:
+		idx = '1.0'
+		length_match = IntVar()
+		while True:
+			idx = text.search(pattern1, idx, stopindex=END, regexp=True, count=length_match)
+			if not idx: break
+			lastidx = '%s+%dc' % (idx, length_match.get())
+			text.tag_add('found', idx, lastidx)
+			idx = lastidx
+	elif pattern1 and pattern2:
+		# Here I'll find where the matches are
+		index = [ '1.0', '1.0' ]
+		indexes = [ [ ], [ ] ]
+		length_match = [ IntVar(), IntVar() ]
+		length_matches = [ [ ], [ ] ]
+		while True:
+			index[0] = text.search(pattern1, index[0], stopindex=END, regexp=True, count=length_match[0])
+			if index[0]:
+				indexes[0].append(index[0])
+				length_matches[0].append(length_match[0].get())
+				if length_match[0].get():
+					index[0] = '%s + %d char' % (index[0], length_match[0].get())
+				else:
+					index[0] = '%s + 1 char' % (index[0])
+			else: 
+				break
+		while True:
+			index[1] = text.search(pattern2, index[1], stopindex=END, regexp=True, count=length_match[1])
+			if index[1]:
+				indexes[1].append(index[1])
+				length_matches[1].append(length_match[1].get())
+				if length_match[1].get():
+					index[1] = '%s + %d char' % (index[1], length_match[1].get())
+				else:
+					index[1] = '%s + 1 char' % (index[1])
+			else:
+				break
+		# and here I will find which ones are aligned and mark them
+		for idx in indexes[0]:
+			for num in range(1,3):
+				tentative_line = int(idx.split('.')[0]) + num
+				idx_column = idx.split('.')[1]
+				tentative_index = '%s.%s' % (tentative_line, idx_column)
+				if tentative_index in indexes[1]:
+					lastidx0 = '%s + %d chars' % (idx, length_matches[0][indexes[0].index(idx)])
+					lastidx1 = '%s + %d chars' % (tentative_index, length_matches[1][indexes[1].index(tentative_index)])
+					text.tag_add('found', idx, lastidx0)
+					text.tag_add('found', tentative_index, lastidx1)
+	text.tag_config('found', foreground='red')
+		
 buttonFind1.config(command=find)
 regex1.bind('<Return>', find)
-
-buttonFind12.config(command=find12)
-regex2.bind('<Return>', find12)
 
 buttonFindAligned.config(command=find_aligned)
 alignedregex.bind('<Return>', find_aligned)
 
 buttonOpen.config(command=dialog_file)
 buttonLatex.config(command=latexize)
+buttonHighlight.config(command=highlight)
 
 dialog_file()
 
