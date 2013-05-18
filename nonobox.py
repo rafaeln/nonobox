@@ -3,7 +3,7 @@
 # python version of stool (originally written for bash and sed)
 
 """ 
-Nonobox 0.4.6: companion tool for searches in SIL Toolbox-formatted databases
+Nonobox 0.4.7: companion tool for searches in SIL Toolbox-formatted databases
 Copyright (C) 2013 Rafael Bezerra Nonato [rafaeln@gmail.com]
 
 This program is free software: you can redistribute it and/or modify
@@ -157,7 +157,7 @@ Label(topFrame, text='Aligned Regex:').pack(side=LEFT)
 alignedregex = Entry(topFrame)
 alignedregex.pack(side=LEFT, fill=BOTH)
 
-topFrame.pack(side=TOP, anchor=S, expand=YES, fill=BOTH) #, anchor=W, expand=YES, fill=BOTH)
+topFrame.pack(side=TOP, anchor=S, expand=NO, fill=BOTH) #, anchor=W, expand=YES, fill=BOTH)
 
 # sets the lower bar, with the buttons
 interFrame = Frame(root)
@@ -180,7 +180,7 @@ buttonHighlight.pack(side=LEFT)
 buttonOpen = Button(interFrame, text='Open other file...')
 buttonOpen.pack(side=LEFT)
 
-interFrame.pack(side=TOP, anchor=S, expand=YES, fill=BOTH) #, anchor=W, expand=YES, fill=BOTH)
+interFrame.pack(side=TOP, anchor=S, expand=NO, fill=BOTH) #, anchor=W, expand=YES, fill=BOTH)
 
 #sets up the lower part, where the text is
 bottomFrame = Frame(root)
