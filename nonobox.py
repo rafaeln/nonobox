@@ -3,7 +3,7 @@
 # python version of stool (originally written for bash and sed)
 
 """ 
-Nonobox 0.4.5: companion tool for searches in SIL Toolbox-formatted databases
+Nonobox 0.4.6: companion tool for searches in SIL Toolbox-formatted databases
 Copyright (C) 2013 Rafael Bezerra Nonato [rafaeln@gmail.com]
 
 This program is free software: you can redistribute it and/or modify
@@ -188,7 +188,7 @@ scroll = Scrollbar(bottomFrame)
 text = Text(bottomFrame)
 
 scroll.pack(side=RIGHT, fill=Y)
-text.config(width=90, height=50, tabs=30)
+text.config(width=90, height=30, tabs=30)
 text.pack(side=LEFT, expand=YES, fill=BOTH)
 bottomFrame.pack(side=TOP, expand=YES, fill=BOTH)
 
@@ -296,7 +296,7 @@ def find_aligned(*ignore):
 		# and here I will find which ones are aligned and mark them, and also count the matches
 		num_matches = 0
 		for idx in indexes[0]:
-			for num in range(1,3):
+			for num in range(1,4):
 				tentative_line = int(idx.split('.')[0]) + num
 				idx_column = idx.split('.')[1]
 				tentative_index = '%s.%s' % (tentative_line, idx_column)
@@ -393,7 +393,7 @@ def highlight():
 				break
 		# and here I will find which ones are aligned and mark them
 		for idx in indexes[0]:
-			for num in range(1,3):
+			for num in range(1,4):
 				tentative_line = int(idx.split('.')[0]) + num
 				idx_column = idx.split('.')[1]
 				tentative_index = '%s.%s' % (tentative_line, idx_column)
